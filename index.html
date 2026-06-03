@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spirit of the Wild — National Parks Voice Agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --forest:    #0d1f0d;
+      --bark:      #1a2e1a;
+      --moss:      #2d5a27;
+      --fern:      #4a7c3f;
+      --sage:      #7fb069;
+      --gold:      #c8a96e;
+      --cream:     #f5e6c8;
+      --mist:      rgba(245,230,200,0.08);
+      --glow:      rgba(127,176,105,0.35);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--forest);
+      color: var(--cream);
+      font-family: 'Georgia', serif;
+      overflow-x: hidden;
+    }
+
+    /* ── Stars background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 30% 5%,  rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 50% 20%, rgba(255,255,255,0.5) 0%, transparent 100%),
+        radial-gradient(1px 1px at 70% 8%,  rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 85% 18%, rgba(255,255,255,0.4) 0%, transparent 100%),
+        radial-gradient(1px 1px at 20% 35%, rgba(255,255,255,0.2) 0%, transparent 100%),
+        radial-gradient(1px 1px at 60% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 40%, rgba(255,255,255,0.2) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Mountain silhouette at bottom ── */
+    body::after {
+      content: '';
+      position: fixed; bottom: 0; left: 0; right: 0; height: 220px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 220'%3E%3Cpath fill='%230d1a0d' d='M0,220 L0,160 L120,80 L200,120 L320,40 L420,100 L540,20 L620,90 L720,10 L820,80 L920,30 L1020,100 L1120,50 L1220,110 L1320,60 L1440,120 L1440,220 Z'/%3E%3Cpath fill='%230a160a' d='M0,220 L0,180 L80,140 L160,170 L260,120 L360,155 L460,100 L560,140 L660,90 L760,130 L860,95 L960,140 L1060,110 L1160,150 L1280,115 L1380,145 L1440,130 L1440,220 Z'/%3E%3C/svg%3E") bottom/cover no-repeat;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 240px;
+      gap: 20px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+    }
+    header h1 {
+      font-size: clamp(1.6rem, 5vw, 2.8rem);
+      color: var(--cream);
+      letter-spacing: 0.12em;
+      text-shadow: 0 0 40px var(--glow);
+    }
+    header p {
+      color: var(--sage);
+      font-size: 0.95rem;
+      margin-top: 6px;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Orb ── */
+    #orb-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 180px;
+      height: 180px;
+      position: relative;
+    }
+    #orb {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, var(--fern), var(--moss), #0d200d);
+      box-shadow:
+        0 0 0 0 var(--glow),
+        0 0 30px rgba(74,124,63,0.4),
+        inset 0 0 30px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    #orb::after {
+      content: '';
+      position: absolute;
+      top: 15%; left: 20%;
+      width: 30%; height: 15%;
+      background: rgba(255,255,255,0.12);
+      border-radius: 50%;
+      transform: rotate(-30deg);
+    }
+    #orb svg { width: 56px; height: 56px; fill: var(--cream); opacity: 0.85; }
+
+    /* State animations */
+    #orb.listening {
+      animation: pulse-listen 1.2s ease-in-out infinite;
+      box-shadow: 0 0 0 0 var(--glow), 0 0 50px rgba(127,176,105,0.6), inset 0 0 30px rgba(0,0,0,0.4);
+    }
+    #orb.speaking {
+      animation: pulse-speak 0.8s ease-in-out infinite;
+      box-shadow: 0 0 0 0 var(--glow), 0 0 60px rgba(200,169,110,0.5), inset 0 0 30px rgba(0,0,0,0.4);
+      background: radial-gradient(circle at 35% 35%, #8a6f3a, #5a4820, #0d200d);
+    }
+    #orb.thinking {
+      animation: spin-slow 3s linear infinite;
+      box-shadow: 0 0 0 0 var(--glow), 0 0 40px rgba(127,176,105,0.4), inset 0 0 30px rgba(0,0,0,0.5);
+    }
+
+    @keyframes pulse-listen {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(127,176,105,0.5), 0 0 50px rgba(127,176,105,0.5), inset 0 0 30px rgba(0,0,0,0.4); }
+      50%       { transform: scale(1.06); box-shadow: 0 0 0 16px rgba(127,176,105,0), 0 0 60px rgba(127,176,105,0.7), inset 0 0 30px rgba(0,0,0,0.4); }
+    }
+    @keyframes pulse-speak {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.04); }
+    }
+    @keyframes spin-slow {
+      from { filter: hue-rotate(0deg); }
+      to   { filter: hue-rotate(30deg); }
+    }
+
+    /* ── Status text ── */
+    #status {
+      font-size: 0.9rem;
+      color: var(--sage);
+      letter-spacing: 0.08em;
+      text-align: center;
+      height: 20px;
+      transition: opacity 0.3s;
+    }
+
+    /* ── Start button ── */
+    #start-btn {
+      padding: 12px 36px;
+      background: transparent;
+      border: 1.5px solid var(--gold);
+      border-radius: 40px;
+      color: var(--gold);
+      font-family: 'Georgia', serif;
+      font-size: 1rem;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, transform 0.1s;
+    }
+    #start-btn:hover  { background: rgba(200,169,110,0.12); transform: scale(1.02); }
+    #start-btn:active { transform: scale(0.97); }
+    #start-btn.hidden { display: none; }
+
+    /* ── Stop button ── */
+    #stop-btn {
+      padding: 8px 24px;
+      background: transparent;
+      border: 1px solid rgba(245,230,200,0.3);
+      border-radius: 40px;
+      color: rgba(245,230,200,0.5);
+      font-family: 'Georgia', serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      display: none;
+    }
+    #stop-btn:hover { border-color: rgba(245,230,200,0.6); color: rgba(245,230,200,0.8); }
+    #stop-btn.visible { display: block; }
+
+    /* ── Transcript ── */
+    #transcript {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .bubble {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      animation: fade-in 0.3s ease;
+    }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .bubble.agent { flex-direction: row; }
+    .bubble.user  { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .bubble.agent .avatar { background: var(--moss); }
+    .bubble.user  .avatar { background: rgba(245,230,200,0.12); }
+
+    .text {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+    .bubble.agent .text {
+      background: rgba(45,90,39,0.35);
+      border: 1px solid rgba(127,176,105,0.2);
+      color: var(--cream);
+      border-radius: 4px 16px 16px 16px;
+    }
+    .bubble.user .text {
+      background: rgba(245,230,200,0.08);
+      border: 1px solid rgba(245,230,200,0.12);
+      color: rgba(245,230,200,0.85);
+      border-radius: 16px 4px 16px 16px;
+      text-align: right;
+    }
+    .bubble.agent .text.partial { opacity: 0.55; font-style: italic; }
+
+    /* ── Info cards ── */
+    .card {
+      width: 100%; max-width: 680px;
+      background: rgba(13,31,13,0.7);
+      border: 1px solid rgba(127,176,105,0.25);
+      border-radius: 12px;
+      padding: 16px 20px;
+      animation: fade-in 0.4s ease;
+      backdrop-filter: blur(4px);
+    }
+    .card h3 {
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      color: var(--sage);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .card-title { font-size: 1.05rem; color: var(--gold); margin-bottom: 6px; }
+    .card-desc  { font-size: 0.85rem; color: rgba(245,230,200,0.7); line-height: 1.5; margin-bottom: 10px; }
+    .tag-row    { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      background: rgba(127,176,105,0.15);
+      border: 1px solid rgba(127,176,105,0.25);
+      color: var(--sage);
+    }
+    .fee-row { font-size: 0.82rem; color: var(--cream); margin-top: 8px; }
+
+    .species-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .species-chip {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      background: rgba(45,90,39,0.4);
+      border: 1px solid rgba(127,176,105,0.2);
+      color: var(--cream);
+    }
+    .species-chip span { color: var(--sage); font-size: 0.7rem; display: block; }
+
+    #cards { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Bingo card ── */
+    .bingo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .bingo-cell {
+      border-radius: 10px;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      text-align: center;
+      cursor: default;
+      transition: transform 0.15s, opacity 0.15s;
+      position: relative;
+    }
+    .bingo-cell:hover { transform: scale(1.03); }
+    .bingo-cell.found { opacity: 0.45; }
+    .bingo-cell.found::after {
+      content: '✓';
+      position: absolute;
+      inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      color: var(--sage);
+      background: rgba(13,31,13,0.55);
+      border-radius: 10px;
+    }
+    .bingo-cell.easy      { background: rgba(45,90,39,0.45);  border: 1px solid rgba(127,176,105,0.4); }
+    .bingo-cell.medium    { background: rgba(90,72,32,0.45);  border: 1px solid rgba(200,169,110,0.4); }
+    .bingo-cell.long-shot { background: rgba(80,30,30,0.45);  border: 1px solid rgba(180,80,80,0.4); }
+    .bingo-cell .b-icon   { font-size: 1.5rem; }
+    .bingo-cell .b-name   { font-size: 0.72rem; color: var(--cream); line-height: 1.3; font-weight: bold; }
+    .bingo-cell .b-desc   { font-size: 0.65rem; color: rgba(245,230,200,0.6); line-height: 1.3; }
+    .bingo-cell .b-diff   { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+    .bingo-cell.easy      .b-diff { color: var(--sage); }
+    .bingo-cell.medium    .b-diff { color: var(--gold); }
+    .bingo-cell.long-shot .b-diff { color: #c06060; }
+    .bingo-legend {
+      display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap;
+      font-size: 0.7rem; color: rgba(245,230,200,0.55); letter-spacing: 0.06em;
+    }
+
+    /* ── Itinerary ── */
+    .itin-stops { display: flex; flex-direction: column; gap: 0; margin-top: 12px; }
+    .itin-stop {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding-bottom: 16px; position: relative;
+    }
+    .itin-stop:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 17px; top: 34px;
+      width: 2px;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(127,176,105,0.4), rgba(127,176,105,0.05));
+    }
+    .itin-dot {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(45,90,39,0.6);
+      border: 1.5px solid rgba(127,176,105,0.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      position: relative; z-index: 1;
+    }
+    .itin-body { flex: 1; padding-top: 4px; }
+    .itin-time { font-size: 0.68rem; color: var(--sage); letter-spacing: 0.1em; text-transform: uppercase; }
+    .itin-loc  { font-size: 0.92rem; color: var(--gold); margin: 2px 0 4px; }
+    .itin-desc { font-size: 0.82rem; color: rgba(245,230,200,0.75); line-height: 1.5; }
+    .itin-tip  {
+      margin-top: 6px; font-size: 0.75rem;
+      color: var(--sage); font-style: italic;
+      padding-left: 8px; border-left: 2px solid rgba(127,176,105,0.35);
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Spirit of the Wild</h1>
+    <p>National Parks Voice Agent</p>
+  </header>
+
+  <div id="orb-wrap">
+    <div id="orb" class="idle">
+      <!-- Pine tree icon -->
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="32,4 52,36 40,36 48,56 16,56 24,36 12,36" />
+      </svg>
+    </div>
+  </div>
+
+  <div id="status">Touch the wild to begin your journey</div>
+
+  <button id="start-btn">Enter the Wild</button>
+  <button id="stop-btn">End Session</button>
+
+  <div id="cards"></div>
+  <div id="transcript"></div>
+</div>
+
+<script>
+const RATE = 24_000;
+
+// ── PCM AudioWorklet (inline blob) ──────────────────────────────────────────
+const workletCode = `
+  class PcmProcessor extends AudioWorkletProcessor {
+    process(inputs) {
+      const ch = inputs[0]?.[0];
+      if (ch) {
+        const buf = new Int16Array(ch.length);
+        for (let i = 0; i < ch.length; i++)
+          buf[i] = Math.max(-32768, Math.min(32767, ch[i] * 32767));
+        this.port.postMessage(buf.buffer, [buf.buffer]);
+      }
+      return true;
+    }
+  }
+  registerProcessor('pcm-capture', PcmProcessor);
+`;
+const workletUrl = URL.createObjectURL(new Blob([workletCode], { type: 'application/javascript' }));
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const orb        = document.getElementById('orb');
+const statusEl   = document.getElementById('status');
+const startBtn   = document.getElementById('start-btn');
+const stopBtn    = document.getElementById('stop-btn');
+const transcript = document.getElementById('transcript');
+const cards      = document.getElementById('cards');
+
+// ── State ────────────────────────────────────────────────────────────────────
+let ws, ctx, source, worklet, micStream;
+let ready = false;
+let playT = 0;
+let pendingTools = {}; // call_id -> { name, args, result? }
+let partialAgentBubble = null;
+let partialUserBubble  = null;
+
+// ── UI helpers ───────────────────────────────────────────────────────────────
+function setStatus(text)   { statusEl.textContent = text; }
+function setOrb(state)     { orb.className = state; }
+
+function addBubble(role, text, partial = false) {
+  const wrap = document.createElement('div');
+  wrap.className = `bubble ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = role === 'agent' ? '🌲' : '🧭';
+
+  const textEl = document.createElement('div');
+  textEl.className = `text${partial ? ' partial' : ''}`;
+  textEl.textContent = text;
+
+  wrap.append(avatar, textEl);
+  transcript.append(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  return { wrap, textEl };
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function showParkCard(park) {
+  const fee = park.entranceFees?.[0];
+  const activities = (park.activities || []).slice(0, 6).map(a => a.name);
+
+  const card = el('div', 'card');
+  card.append(el('h3', null, 'National Park'));
+  card.append(el('div', 'card-title', park.fullName));
+  card.append(el('div', 'card-desc', (park.description || '').slice(0, 220) + '…'));
+  if (fee) {
+    card.append(el('div', 'fee-row', `Entrance: $${fee.cost} — ${fee.title}`));
+  }
+  const tagRow = el('div', 'tag-row');
+  tagRow.style.marginTop = '10px';
+  activities.forEach(a => tagRow.append(el('span', 'tag', a)));
+  card.append(tagRow);
+  cards.prepend(card);
+}
+
+function showSightingsCard(parkName, observations) {
+  const card = el('div', 'card');
+  card.append(el('h3', null, `Recent Sightings near ${parkName}`));
+  const grid = el('div', 'species-grid');
+  if (observations.length === 0) {
+    const empty = el('span', null, 'No recent observations found.');
+    empty.style.cssText = 'color:var(--sage);font-size:.85rem';
+    grid.append(empty);
+  } else {
+    observations.slice(0, 10).forEach(o => {
+      const common = o.taxon?.preferred_common_name || '';
+      const sci    = o.taxon?.name || 'Unknown';
+      const date   = o.observed_on || '';
+      const chip = el('div', 'species-chip', common || sci);
+      chip.append(el('span', null, (common ? sci + ' ' : '') + date));
+      grid.append(chip);
+    });
+  }
+  card.append(grid);
+  cards.prepend(card);
+}
+
+function showBingoCard(parkName, items) {
+  const ICONS = {
+    easy: '🌿', medium: '🦎', 'long-shot': '⭐',
+    mammal: '🦌', bird: '🐦', plant: '🌸', insect: '🪲',
+    fungi: '🍄', reptile: '🐍', amphibian: '🐸', default: '🔍',
+  };
+  const card = el('div', 'card');
+  card.append(el('h3', null, `Nature Bingo — ${parkName}`));
+
+  const grid = document.createElement('div');
+  grid.className = 'bingo-grid';
+
+  items.slice(0, 9).forEach(item => {
+    const diff = (item.difficulty || 'easy').toLowerCase().replace(/[_ ]/g, '-');
+    const cls = ['easy', 'medium', 'long-shot'].includes(diff) ? diff : 'easy';
+    const cell = el('div', `bingo-cell ${cls}`);
+    cell.title = 'Click to mark as found!';
+    cell.addEventListener('click', () => cell.classList.toggle('found'));
+
+    const icon = el('div', 'b-icon');
+    icon.textContent = item.icon || ICONS[item.category] || ICONS[cls] || ICONS.default;
+    const name = el('div', 'b-name', item.name);
+    const desc = el('div', 'b-desc', item.description || '');
+    const diffEl = el('div', 'b-diff', cls === 'long-shot' ? '★ Long shot' : cls === 'medium' ? 'With patience' : 'Keep an eye out');
+
+    cell.append(icon, name, desc, diffEl);
+    grid.append(cell);
+  });
+
+  card.append(grid);
+
+  const legend = el('div', 'bingo-legend');
+  [['🌿 Easy', ''], ['🟡 With patience', ''], ['★ Long shot', '']].forEach(([txt]) => {
+    legend.append(el('span', null, txt));
+  });
+  card.append(legend);
+  cards.prepend(card);
+}
+
+function showItinerary(parkName, stops) {
+  const card = el('div', 'card');
+  card.append(el('h3', null, `Your Journey — ${parkName}`));
+
+  const list = el('div', 'itin-stops');
+  stops.forEach(stop => {
+    const row   = el('div', 'itin-stop');
+    const dot   = el('div', 'itin-dot');
+    dot.textContent = stop.icon || '🌲';
+    const body  = el('div', 'itin-body');
+    const time  = el('div', 'itin-time', stop.time || '');
+    const loc   = el('div', 'itin-loc',  stop.location || '');
+    const desc  = el('div', 'itin-desc', stop.description || '');
+    body.append(time, loc, desc);
+    if (stop.tip) {
+      const tip = el('div', 'itin-tip', stop.tip);
+      body.append(tip);
+    }
+    row.append(dot, body);
+    list.append(row);
+  });
+
+  card.append(list);
+  cards.prepend(card);
+}
+
+// ── Tool execution ───────────────────────────────────────────────────────────
+async function executeTool(name, args) {
+  if (name === 'get_park_info') {
+    const r = await fetch(`/api/park?name=${encodeURIComponent(args.park_name)}`);
+    const data = await r.json();
+    const park = data.data?.[0];
+    if (!park) return { error: 'Park not found' };
+    if (park) showParkCard(park);
+    return {
+      fullName:      park.fullName,
+      description:   park.description,
+      weatherInfo:   park.weatherInfo,
+      latitude:      park.latitude,
+      longitude:     park.longitude,
+      entranceFees:  park.entranceFees?.slice(0, 2),
+      operatingHours: park.operatingHours?.slice(0, 1),
+      activities:    (park.activities || []).slice(0, 8).map(a => a.name),
+      topics:        (park.topics || []).slice(0, 8).map(t => t.name),
+    };
+  }
+
+  if (name === 'get_recent_sightings') {
+    const r = await fetch(`/api/sightings?lat=${args.latitude}&lng=${args.longitude}`);
+    const data = await r.json();
+    const obs = data.results || [];
+    showSightingsCard(args.park_name, obs);
+    return {
+      total_observations: data.total_results,
+      recent: obs.slice(0, 10).map(o => ({
+        common_name:    o.taxon?.preferred_common_name,
+        scientific_name: o.taxon?.name,
+        observed_on:    o.observed_on,
+        place:          o.place_guess,
+      })),
+    };
+  }
+
+  if (name === 'create_bingo_card') {
+    showBingoCard(args.park_name, args.items);
+    return { success: true };
+  }
+
+  if (name === 'create_itinerary') {
+    showItinerary(args.park_name, args.stops);
+    return { success: true };
+  }
+
+  return { error: `Unknown tool: ${name}` };
+}
+
+// ── WebSocket message handler ─────────────────────────────────────────────────
+async function handleMessage(raw) {
+  const m = JSON.parse(raw);
+
+  switch (m.type) {
+    case 'session.ready':
+      ready = true;
+      setOrb('listening');
+      setStatus('Listening… speak to the wild');
+      break;
+
+    case 'input.speech.started':
+      setOrb('listening');
+      setStatus('Hearing you…');
+      // Clear partial user bubble
+      if (partialUserBubble) { partialUserBubble.wrap.remove(); partialUserBubble = null; }
+      break;
+
+    case 'transcript.user.delta':
+      if (!partialUserBubble) {
+        partialUserBubble = addBubble('user', m.text, true);
+      } else {
+        partialUserBubble.textEl.textContent = m.text;
+      }
+      break;
+
+    case 'transcript.user':
+      if (partialUserBubble) { partialUserBubble.wrap.remove(); partialUserBubble = null; }
+      addBubble('user', m.text);
+      break;
+
+    case 'reply.started':
+      setOrb('speaking');
+      setStatus('The wild speaks…');
+      partialAgentBubble = addBubble('agent', '', true);
+      break;
+
+    case 'reply.audio': {
+      // NOTE: reply.audio uses `data` field, not `audio`
+      const raw64 = m.data;
+      const binary = atob(raw64);
+      const pcm    = new Int16Array(binary.length / 2);
+      for (let i = 0; i < pcm.length; i++)
+        pcm[i] = binary.charCodeAt(i * 2) | (binary.charCodeAt(i * 2 + 1) << 8);
+      const f32 = new Float32Array(pcm.length);
+      for (let i = 0; i < pcm.length; i++) f32[i] = pcm[i] / 32768;
+      const buf = ctx.createBuffer(1, f32.length, RATE);
+      buf.getChannelData(0).set(f32);
+      const srcNode = ctx.createBufferSource();
+      srcNode.buffer = buf;
+      srcNode.connect(ctx.destination);
+      playT = Math.max(playT, ctx.currentTime);
+      srcNode.start(playT);
+      playT += buf.duration;
+      break;
+    }
+
+    case 'transcript.agent':
+      if (partialAgentBubble) {
+        partialAgentBubble.textEl.textContent = m.text;
+        partialAgentBubble.textEl.classList.remove('partial');
+      }
+      break;
+
+    case 'reply.done':
+      if (m.status === 'interrupted') {
+        // Flush playback head so stale audio doesn't drain
+        playT = ctx.currentTime;
+        if (partialAgentBubble) { partialAgentBubble.wrap.remove(); partialAgentBubble = null; }
+      } else {
+        partialAgentBubble = null;
+      }
+      setOrb('listening');
+      setStatus('Listening… speak to the wild');
+
+      // Send any pending tool results now that reply.done has fired
+      for (const [callId, tool] of Object.entries(pendingTools)) {
+        if (tool.result !== undefined) {
+          ws.send(JSON.stringify({
+            type: 'tool.result',
+            call_id: callId,
+            result: JSON.stringify(tool.result),
+          }));
+        }
+      }
+      pendingTools = {};
+      break;
+
+    case 'tool.call': {
+      setOrb('thinking');
+      setStatus(`Consulting the wild about ${m.name.replace(/_/g, ' ')}…`);
+      pendingTools[m.call_id] = { name: m.name, args: m.arguments };
+      try {
+        const result = await executeTool(m.name, m.arguments);
+        pendingTools[m.call_id].result = result;
+      } catch (e) {
+        pendingTools[m.call_id].result = { error: e.message };
+      }
+      break;
+    }
+
+    case 'session.error':
+      console.error('Session error:', m.message);
+      setStatus(`Error: ${m.message}`);
+      break;
+  }
+}
+
+// ── Start session ────────────────────────────────────────────────────────────
+async function startSession() {
+  startBtn.classList.add('hidden');
+  setStatus('Waking the wild…');
+
+  // Mint a fresh single-use token
+  let token;
+  try {
+    const r = await fetch('/token');
+    const d = await r.json();
+    token = d.token;
+    if (!token) throw new Error(d.error || 'No token returned');
+  } catch (e) {
+    setStatus(`Token error: ${e.message}`);
+    startBtn.classList.remove('hidden');
+    return;
+  }
+
+  // Set up AudioContext + mic
+  ctx = new AudioContext({ sampleRate: RATE });
+  await ctx.resume();
+  await ctx.audioWorklet.addModule(workletUrl);
+
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  });
+  source  = ctx.createMediaStreamSource(micStream);
+  worklet = new AudioWorkletNode(ctx, 'pcm-capture');
+
+  worklet.port.onmessage = ({ data }) => {
+    if (!ready || ws?.readyState !== 1) return;
+    const bytes = new Uint8Array(data);
+    let str = '';
+    for (let i = 0; i < bytes.length; i++) str += String.fromCharCode(bytes[i]);
+    ws.send(JSON.stringify({ type: 'input.audio', audio: btoa(str) }));
+  };
+  source.connect(worklet).connect(ctx.destination);
+
+  // Open WebSocket
+  const wsUrl = new URL('wss://agents.assemblyai.com/v1/ws');
+  wsUrl.searchParams.set('token', token);
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    // Send session.update immediately — do NOT wait for session.ready
+    ws.send(JSON.stringify({
+      type: 'session.update',
+      session: {
+        system_prompt: `You are the living voice of America's National Parks — a presence that has watched forests grow, rivers carve canyons, and seasons turn for thousands of years.
+
+PERSONA SELECTION — do this first, every time:
+When a visitor arrives, greet them warmly and briefly, then ask who they'd like to speak with today. Present exactly these four options by name:
+
+1. Elder Ranger — weathered wisdom, unhurried, knows every trail and hidden meadow
+2. Voice of the Forest — mystical and poetic, speaks as though the land itself is alive
+3. The Naturalist — bright and enthusiastic, genuinely thrilled by every beetle and bloom
+4. An Animal Spirit — ask them which animal calls to them, then fully embody that creature's perspective and personality
+
+Once they choose, commit to that persona for the entire conversation. Do not break character. Adapt your vocabulary, pacing, and emotional register:
+- Elder Ranger: measured, dry humor, uses cardinal directions and seasonal landmarks
+- Voice of the Forest: slow cadence, nature metaphors, reverent pauses, speaks of "we" meaning all living things
+- Naturalist: energetic, exclamation points, drops Latin species names casually then immediately translates them
+- Animal Spirit: embody the creature fully — a fox is sly and quick, a bear is grounded and slow-moving, an eagle is lofty and precise
+
+---
+
+CORE CAPABILITIES — weave these in naturally, never list them as a menu:
+
+1. PARK KNOWLEDGE & Q&A
+Answer questions about wildlife, plants, geology, history, and visitor tips across US national parks. Speak from deep familiarity, not like a brochure. When asked about animal or plant sightings, use the iNaturalist tool to pull recent observation data. Present findings as living stories — "Three days ago, someone spotted a black bear sow with cubs near the eastern trailhead" — not as raw data dumps.
+
+2. ITINERARY PLANNING
+When a visitor seems interested in planning their visit, gather what you need through natural conversation — not an interrogation. The questions to weave in:
+- How much time do they have? (hours, a day, multiple days)
+- What draws them most — wildlife, hiking, photography, quiet reflection, family with young kids?
+- Flora, fauna, geology, or just being outside?
+- Any mobility or accessibility considerations?
+
+Build the itinerary as a narrative, not a bulleted list. Describe it as a journey unfolding. Let their interests weight the whole thing — a birder's day starts at dawn near water; a geology lover's day moves toward exposed rock faces and canyon rims. End with one "secret" — a lesser-known detail or spot that feels like a gift.
+
+3. iNAT BINGO CARD
+When a visitor expresses interest in what they might see, offer to build them a personalized spotter's list. Ask:
+- Are they more drawn to animals, plants, fungi, insects, or a mix?
+- Any favorites or wish-list species?
+- How long will they be out, and roughly what habitat (meadow, forest, water's edge, alpine)?
+
+Generate a bingo card of 9 things (3x3) calibrated to what's actually likely to be seen based on iNaturalist data for that park and season. Frame each item as something to notice, not just find — "a spider web still holding morning dew" rather than just "spider." Make two or three of them genuinely achievable for anyone, two or three require patience and luck, and one should be a long shot worth dreaming about.
+
+---
+
+VOICE BEHAVIOR RULES:
+- Respond in 2-3 sentences maximum, then stop and let the visitor respond. Do not monologue. If there is more to say, let them ask for it.
+- Keep responses short enough for voice. No walls of information. Pause points are your friend.
+- If you need to give a list, speak it — "three things to look for: first... second... third..."
+- Never say "I cannot" or "I don't have access to." Redirect gracefully in character.
+- If someone is struggling (bad signal, confusion), the Elder Ranger reassures, the Forest Voice slows further, the Naturalist pivots with curiosity, the Animal Spirit uses instinct as metaphor.
+- End conversations the way a good guide does — not abruptly, but with a send-off that fits the persona.
+
+When someone asks about a park, call get_park_info to get real data. Call get_recent_sightings with the park's coordinates to share what creatures have been spotted recently. Present all data as living stories, not raw facts.`,
+
+        greeting: "The wind carries your voice across ancient stone... I am the spirit of the wild. Which national park is calling to your heart today?",
+
+        input: {
+          format: { encoding: 'audio/pcm' },
+          turn_detection: {
+            vad_threshold:      0.5,
+            min_silence:        200,
+            max_silence:        1000,
+            interrupt_response: true,
+          },
+        },
+        output: {
+          voice: 'emma',
+          format: { encoding: 'audio/pcm' },
+        },
+        tools: [
+          {
+            type: 'function',
+            name: 'get_park_info',
+            description: 'Get real information about a US national park including description, entrance fees, operating hours, and popular activities. Call this whenever the user asks about a specific park.',
+            parameters: {
+              type: 'object',
+              properties: {
+                park_name: {
+                  type: 'string',
+                  description: 'Name of the national park, e.g. "Yellowstone", "Grand Canyon", "Yosemite"',
+                },
+              },
+              required: ['park_name'],
+            },
+          },
+          {
+            type: 'function',
+            name: 'get_recent_sightings',
+            description: 'Get recent wildlife and plant species observations near a national park from iNaturalist. Call this after get_park_info to share what has been spotted recently.',
+            parameters: {
+              type: 'object',
+              properties: {
+                park_name: { type: 'string', description: 'Name of the national park' },
+                latitude:  { type: 'number', description: 'Latitude of the park center (from get_park_info result)' },
+                longitude: { type: 'number', description: 'Longitude of the park center (from get_park_info result)' },
+              },
+              required: ['park_name', 'latitude', 'longitude'],
+            },
+          },
+          {
+            type: 'function',
+            name: 'create_bingo_card',
+            description: 'Render a 3x3 nature spotter bingo card on screen. Call this after gathering the visitor\'s interests and consulting iNaturalist data. Items should be calibrated to what is realistically observable at that park and season.',
+            parameters: {
+              type: 'object',
+              properties: {
+                park_name: { type: 'string', description: 'Name of the national park' },
+                items: {
+                  type: 'array',
+                  description: 'Exactly 9 items for the bingo grid.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name:        { type: 'string', description: 'Short display name, e.g. "Black Bear" or "Morning Spider Web"' },
+                      description: { type: 'string', description: 'One evocative phrase describing what to notice, not just find' },
+                      difficulty:  { type: 'string', enum: ['easy', 'medium', 'long-shot'], description: 'easy = anyone will see it; medium = requires patience; long-shot = rare and worth dreaming about' },
+                      icon:        { type: 'string', description: 'A single emoji that fits the species or thing' },
+                      category:    { type: 'string', description: 'mammal, bird, plant, insect, fungi, reptile, amphibian, or other' },
+                    },
+                    required: ['name', 'difficulty'],
+                  },
+                  minItems: 9,
+                  maxItems: 9,
+                },
+              },
+              required: ['park_name', 'items'],
+            },
+          },
+          {
+            type: 'function',
+            name: 'create_itinerary',
+            description: 'Render a visual day itinerary on screen. Call this after gathering the visitor\'s available time, interests, and mobility needs through natural conversation.',
+            parameters: {
+              type: 'object',
+              properties: {
+                park_name: { type: 'string', description: 'Name of the national park' },
+                stops: {
+                  type: 'array',
+                  description: 'Ordered list of itinerary stops.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      time:        { type: 'string', description: 'Time of day, e.g. "Dawn — 6:00 AM" or "Late Afternoon"' },
+                      location:    { type: 'string', description: 'Name of the spot or trail' },
+                      description: { type: 'string', description: 'What the visitor will experience here, in persona voice' },
+                      tip:         { type: 'string', description: 'Optional insider tip or secret detail for this stop' },
+                      icon:        { type: 'string', description: 'A single emoji representing the activity or place' },
+                    },
+                    required: ['time', 'location', 'description'],
+                  },
+                },
+              },
+              required: ['park_name', 'stops'],
+            },
+          },
+        ],
+      },
+    }));
+    setStatus('Connecting to the wild…');
+  };
+
+  ws.onmessage = ({ data }) => handleMessage(data);
+
+  ws.onclose = () => {
+    ready = false;
+    setOrb('idle');
+    setStatus('Session ended. Touch the wild to begin again.');
+    startBtn.classList.remove('hidden');
+    stopBtn.classList.remove('visible');
+    cleanupAudio();
+  };
+
+  ws.onerror = (e) => {
+    console.error('WebSocket error', e);
+    setStatus('Connection lost. Please try again.');
+  };
+
+  stopBtn.classList.add('visible');
+  playT = 0;
+}
+
+function cleanupAudio() {
+  micStream?.getTracks().forEach(t => t.stop());
+  source?.disconnect();
+  worklet?.disconnect();
+  ctx?.close();
+  micStream = source = worklet = ctx = null;
+}
+
+function stopSession() {
+  ws?.close();
+  cleanupAudio();
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+startBtn.addEventListener('click', startSession);
+orb.addEventListener('click', () => { if (!ready && !ws) startSession(); });
+stopBtn.addEventListener('click', stopSession);
+</script>
+</body>
+</html>
