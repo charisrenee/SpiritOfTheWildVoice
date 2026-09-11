@@ -56,12 +56,13 @@
     #app {
       position: relative;
       z-index: 1;
-      min-height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 24px 16px 240px;
-      gap: 20px;
+      padding: 16px 16px 0;
+      gap: 12px;
+      overflow: hidden;
     }
 
     /* ── Header ── */
@@ -69,7 +70,7 @@
       text-align: center;
     }
     header h1 {
-      font-size: clamp(1.6rem, 5vw, 2.8rem);
+      font-size: clamp(1.3rem, 4vw, 2rem);
       color: var(--cream);
       letter-spacing: 0.12em;
       text-shadow: 0 0 40px var(--glow);
@@ -86,13 +87,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 180px;
-      height: 180px;
+      width: 120px;
+      height: 120px;
       position: relative;
+      flex-shrink: 0;
     }
     #orb {
-      width: 140px;
-      height: 140px;
+      width: 96px;
+      height: 96px;
       border-radius: 50%;
       background: radial-gradient(circle at 35% 35%, var(--fern), var(--moss), #0d200d);
       box-shadow:
@@ -116,7 +118,7 @@
       border-radius: 50%;
       transform: rotate(-30deg);
     }
-    #orb svg { width: 56px; height: 56px; fill: var(--cream); opacity: 0.85; }
+    #orb svg { width: 40px; height: 40px; fill: var(--cream); opacity: 0.85; }
 
     /* State animations */
     #orb.listening {
@@ -129,8 +131,12 @@
       background: radial-gradient(circle at 35% 35%, #8a6f3a, #5a4820, #0d200d);
     }
     #orb.thinking {
-      animation: spin-slow 3s linear infinite;
+      animation: ponder 2.2s ease-in-out infinite, spin-slow 3s linear infinite;
       box-shadow: 0 0 0 0 var(--glow), 0 0 40px rgba(127,176,105,0.4), inset 0 0 30px rgba(0,0,0,0.5);
+    }
+    @keyframes ponder {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%      { transform: scale(0.95); opacity: 0.75; }
     }
 
     @keyframes pulse-listen {
@@ -280,7 +286,42 @@
     }
     .species-chip span { color: var(--sage); font-size: 0.7rem; display: block; }
 
-    #cards { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 12px; }
+    /* Featured card: the most recent tool card stays pinned under the header */
+    #featured {
+      width: 100%; max-width: 680px;
+      flex-shrink: 0;
+      max-height: 40vh;
+      overflow-y: auto;
+    }
+    #featured:empty { display: none; }
+
+    /* Scrollable history: transcript + retired cards */
+    #feed {
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%; max-width: 680px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-bottom: 110px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(127,176,105,0.3) transparent;
+    }
+
+    a.card-title { display: block; text-decoration: none; }
+    a.card-title:hover { text-decoration: underline; }
+    .card-hero {
+      width: 100%; max-height: 150px; object-fit: cover;
+      border-radius: 8px; margin-bottom: 10px; display: block;
+    }
+    .card-map {
+      width: 100%; height: 200px; border: 1px solid rgba(127,176,105,0.25);
+      border-radius: 8px; margin-top: 12px; display: block;
+      filter: saturate(0.75) brightness(0.95);
+    }
+    a.species-chip { text-decoration: none; cursor: pointer; }
+    a.species-chip:hover { border-color: var(--sage); background: rgba(45,90,39,0.6); }
 
     /* ── Bingo card ── */
     .bingo-grid {
@@ -359,6 +400,51 @@
       color: var(--sage); font-style: italic;
       padding-left: 8px; border-left: 2px solid rgba(127,176,105,0.35);
     }
+    .itin-map {
+      height: 260px; border-radius: 8px; margin-top: 12px;
+      border: 1px solid rgba(127,176,105,0.25);
+      filter: saturate(0.8); z-index: 0;
+    }
+
+    /* ── Trip hub tabs ── */
+    .hub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .hub-tab {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(127,176,105,0.3);
+      background: transparent;
+      color: var(--sage);
+      font-family: 'Georgia', serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .hub-tab:hover { border-color: var(--sage); }
+    .hub-tab.active {
+      background: rgba(45,90,39,0.5);
+      color: var(--cream);
+      border-color: var(--sage);
+    }
+    .day-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .day-chip {
+      padding: 3px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(200,169,110,0.35);
+      background: transparent;
+      color: var(--gold);
+      font-family: 'Georgia', serif;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+    .day-chip.active { background: rgba(200,169,110,0.2); }
+    .itin-marker {
+      background: var(--fern); color: var(--cream);
+      border-radius: 50%; border: 2px solid var(--cream);
+      display: flex; align-items: center; justify-content: center;
+      font-family: Georgia, serif; font-weight: bold; font-size: 0.8rem;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.5);
+    }
   </style>
 </head>
 <body>
@@ -382,8 +468,10 @@
   <button id="start-btn">Enter the Wild</button>
   <button id="stop-btn">End Session</button>
 
-  <div id="cards"></div>
-  <div id="transcript"></div>
+  <div id="featured"></div>
+  <div id="feed">
+    <div id="transcript"></div>
+  </div>
 </div>
 
 <script>
@@ -413,7 +501,8 @@ const statusEl   = document.getElementById('status');
 const startBtn   = document.getElementById('start-btn');
 const stopBtn    = document.getElementById('stop-btn');
 const transcript = document.getElementById('transcript');
-const cards      = document.getElementById('cards');
+const featured   = document.getElementById('featured');
+const feed       = document.getElementById('feed');
 
 // ── State ────────────────────────────────────────────────────────────────────
 let ws, ctx, source, worklet, micStream;
@@ -426,6 +515,23 @@ let partialUserBubble  = null;
 // ── UI helpers ───────────────────────────────────────────────────────────────
 function setStatus(text)   { statusEl.textContent = text; }
 function setOrb(state)     { orb.className = state; }
+
+// Auto-scroll the feed unless the user has scrolled up to read history
+let feedPinned = true;
+feed.addEventListener('scroll', () => {
+  feedPinned = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
+});
+function scrollFeed() {
+  if (feedPinned) feed.scrollTop = feed.scrollHeight;
+}
+
+// The newest tool card sits pinned under the header; older ones retire into history
+function featureCard(card) {
+  const prev = featured.firstElementChild;
+  if (prev) transcript.append(prev);
+  featured.append(card);
+  scrollFeed();
+}
 
 function addBubble(role, text, partial = false) {
   const wrap = document.createElement('div');
@@ -441,7 +547,7 @@ function addBubble(role, text, partial = false) {
 
   wrap.append(avatar, textEl);
   transcript.append(wrap);
-  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  scrollFeed();
   return { wrap, textEl };
 }
 
@@ -452,27 +558,138 @@ function el(tag, cls, text) {
   return e;
 }
 
-function showParkCard(park) {
+// ── Trip hub: one tabbed card that accumulates everything about the trip ─────
+let trip = null;
+
+function getTrip(parkName) {
+  const same = trip && (trip.park.toLowerCase().includes(parkName.toLowerCase()) ||
+                        parkName.toLowerCase().includes(trip.park.toLowerCase()));
+  if (trip && !same) {
+    // A different park: retire the old hub into history and start fresh
+    if (trip.card.parentElement === featured) transcript.append(trip.card);
+    trip = null;
+  }
+  if (!trip) {
+    const card = el('div', 'card');
+    const head = el('h3', null, `Your Trip — ${parkName}`);
+    const tabs = el('div', 'hub-tabs');
+    const body = el('div', 'hub-body');
+    card.append(head, tabs, body);
+    trip = {
+      park: parkName, card, tabs, body,
+      parkData: null, sightings: null, bingo: null, bingoFound: new Set(),
+      days: [], dayIndex: 0, activeTab: null, tabButtons: {},
+    };
+    featureCard(card);
+  }
+  return trip;
+}
+
+const TAB_ORDER = ['park', 'itinerary', 'map', 'bingo'];
+const TAB_LABELS = { park: 'Park', itinerary: 'Itinerary', map: 'Map', bingo: 'Bingo' };
+
+function ensureTab(name) {
+  if (trip.tabButtons[name]) return;
+  const btn = el('button', 'hub-tab', TAB_LABELS[name]);
+  btn.addEventListener('click', () => selectTab(name));
+  trip.tabButtons[name] = btn;
+  // Keep tabs in a stable order regardless of creation order
+  const after = TAB_ORDER.slice(TAB_ORDER.indexOf(name) + 1).find(n => trip.tabButtons[n]);
+  trip.tabs.insertBefore(btn, after ? trip.tabButtons[after] : null);
+}
+
+function selectTab(name) {
+  trip.activeTab = name;
+  for (const [n, btn] of Object.entries(trip.tabButtons)) {
+    btn.classList.toggle('active', n === name);
+  }
+  trip.body.replaceChildren();
+  if (name === 'park')      renderParkPane();
+  if (name === 'itinerary') renderItineraryPane();
+  if (name === 'map')       renderMapPane();
+  if (name === 'bingo')     renderBingoPane();
+  scrollFeed();
+}
+
+function buildDayChips(pane, onPick, extraAll) {
+  if (trip.days.length < 2) return;
+  const chips = el('div', 'day-chips');
+  const labels = trip.days.map((d, i) => [d.label, i]);
+  if (extraAll) labels.push(['All days', -1]);
+  labels.forEach(([label, i]) => {
+    const chip = el('button', 'day-chip' + (trip.dayIndex === i ? ' active' : ''), label);
+    chip.addEventListener('click', () => { trip.dayIndex = i; onPick(); });
+    chips.append(chip);
+  });
+  pane.append(chips);
+}
+
+// ── Pane renderers ───────────────────────────────────────────────────────────
+function renderParkPane() {
+  const park = trip.parkData;
+  const pane = trip.body;
+  if (!park) return;
   const fee = park.entranceFees?.[0];
   const activities = (park.activities || []).slice(0, 6).map(a => a.name);
 
-  const card = el('div', 'card');
-  card.append(el('h3', null, 'National Park'));
-  card.append(el('div', 'card-title', park.fullName));
-  card.append(el('div', 'card-desc', (park.description || '').slice(0, 220) + '…'));
+  if (park.url) {
+    const title = el('a', 'card-title', park.fullName + ' ↗');
+    title.href = park.url;
+    title.target = '_blank';
+    title.rel = 'noopener';
+    pane.append(title);
+  } else {
+    pane.append(el('div', 'card-title', park.fullName));
+  }
+
+  const img = park.images?.[0];
+  if (img?.url) {
+    const hero = el('img', 'card-hero');
+    hero.src = img.url;
+    hero.alt = img.altText || park.fullName;
+    hero.loading = 'lazy';
+    pane.append(hero);
+  }
+
+  // NPS descriptions are occasionally empty (Yellowstone's is, currently) —
+  // fall back to other prose fields rather than showing nothing
+  const desc = park.description || park.weatherInfo || park.directionsInfo || '';
+  if (desc) {
+    pane.append(el('div', 'card-desc', desc.length > 260 ? desc.slice(0, 260) + '…' : desc));
+  }
+
   if (fee) {
-    card.append(el('div', 'fee-row', `Entrance: $${fee.cost} — ${fee.title}`));
+    pane.append(el('div', 'fee-row', `Entrance: $${fee.cost} — ${fee.title}`));
   }
   const tagRow = el('div', 'tag-row');
   tagRow.style.marginTop = '10px';
   activities.forEach(a => tagRow.append(el('span', 'tag', a)));
-  card.append(tagRow);
-  cards.prepend(card);
+  pane.append(tagRow);
+
+  const lat = parseFloat(park.latitude), lng = parseFloat(park.longitude);
+  if (!isNaN(lat) && !isNaN(lng)) {
+    const map = el('iframe', 'card-map');
+    map.loading = 'lazy';
+    map.title = `Map of ${park.fullName}`;
+    map.src = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.6}%2C${lat - 0.4}%2C${lng + 0.6}%2C${lat + 0.4}&layer=mapnik&marker=${lat}%2C${lng}`;
+    pane.append(map);
+  }
+
+  if (trip.sightings) {
+    const h = el('div', 'card-title', 'Recent Sightings');
+    h.style.marginTop = '14px';
+    pane.append(h, buildSightingsGrid(trip.sightings));
+  }
 }
 
-function showSightingsCard(parkName, observations) {
-  const card = el('div', 'card');
-  card.append(el('h3', null, `Recent Sightings near ${parkName}`));
+function showParkCard(park) {
+  const t = getTrip(park.name || park.fullName);
+  t.parkData = park;
+  ensureTab('park');
+  selectTab('park');
+}
+
+function buildSightingsGrid(observations) {
   const grid = el('div', 'species-grid');
   if (observations.length === 0) {
     const empty = el('span', null, 'No recent observations found.');
@@ -483,33 +700,48 @@ function showSightingsCard(parkName, observations) {
       const common = o.taxon?.preferred_common_name || '';
       const sci    = o.taxon?.name || 'Unknown';
       const date   = o.observed_on || '';
-      const chip = el('div', 'species-chip', common || sci);
+      const chip = el(o.uri ? 'a' : 'div', 'species-chip', common || sci);
+      if (o.uri) {
+        chip.href = o.uri;
+        chip.target = '_blank';
+        chip.rel = 'noopener';
+        chip.title = 'View this observation on iNaturalist';
+      }
       chip.append(el('span', null, (common ? sci + ' ' : '') + date));
       grid.append(chip);
     });
   }
-  card.append(grid);
-  cards.prepend(card);
+  return grid;
 }
 
-function showBingoCard(parkName, items) {
+function showSightingsCard(parkName, observations) {
+  const t = getTrip(parkName);
+  t.sightings = observations;
+  ensureTab('park');
+  selectTab('park');
+}
+
+function renderBingoPane() {
   const ICONS = {
     easy: '🌿', medium: '🦎', 'long-shot': '⭐',
     mammal: '🦌', bird: '🐦', plant: '🌸', insect: '🪲',
     fungi: '🍄', reptile: '🐍', amphibian: '🐸', default: '🔍',
   };
-  const card = el('div', 'card');
-  card.append(el('h3', null, `Nature Bingo — ${parkName}`));
+  const pane = trip.body;
+  if (!trip.bingo) return;
 
   const grid = document.createElement('div');
   grid.className = 'bingo-grid';
 
-  items.slice(0, 9).forEach(item => {
+  trip.bingo.slice(0, 9).forEach((item, i) => {
     const diff = (item.difficulty || 'easy').toLowerCase().replace(/[_ ]/g, '-');
     const cls = ['easy', 'medium', 'long-shot'].includes(diff) ? diff : 'easy';
-    const cell = el('div', `bingo-cell ${cls}`);
+    const cell = el('div', `bingo-cell ${cls}${trip.bingoFound.has(i) ? ' found' : ''}`);
     cell.title = 'Click to mark as found!';
-    cell.addEventListener('click', () => cell.classList.toggle('found'));
+    cell.addEventListener('click', () => {
+      trip.bingoFound.has(i) ? trip.bingoFound.delete(i) : trip.bingoFound.add(i);
+      cell.classList.toggle('found');
+    });
 
     const icon = el('div', 'b-icon');
     icon.textContent = item.icon || ICONS[item.category] || ICONS[cls] || ICONS.default;
@@ -521,20 +753,55 @@ function showBingoCard(parkName, items) {
     grid.append(cell);
   });
 
-  card.append(grid);
+  pane.append(grid);
 
   const legend = el('div', 'bingo-legend');
   [['🌿 Easy', ''], ['🟡 With patience', ''], ['★ Long shot', '']].forEach(([txt]) => {
     legend.append(el('span', null, txt));
   });
-  card.append(legend);
-  cards.prepend(card);
+  pane.append(legend);
 }
 
-function showItinerary(parkName, stops) {
-  const card = el('div', 'card');
-  card.append(el('h3', null, `Your Journey — ${parkName}`));
+function showBingoCard(parkName, items) {
+  const t = getTrip(parkName);
+  // Enforce data-derived difficulty: if an item names a species from the
+  // iNaturalist frequency ranking, its computed tier wins over the model's
+  if (t.speciesTiers) {
+    const keys = Object.keys(t.speciesTiers);
+    items = items.map(it => {
+      const name = (it.name || '').toLowerCase();
+      const key = t.speciesTiers[name] !== undefined
+        ? name
+        : keys.find(k => k.includes(name) || name.includes(k));
+      return key ? { ...it, difficulty: t.speciesTiers[key] } : it;
+    });
+  }
+  t.bingo = items;
+  t.bingoFound = new Set();
+  ensureTab('bingo');
+  selectTab('bingo');
+}
 
+// Leaflet is loaded lazily, only when an itinerary actually has coordinates
+let leafletPromise = null;
+function loadLeaflet() {
+  if (!leafletPromise) {
+    leafletPromise = new Promise((resolve, reject) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.append(css);
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      s.onload = () => resolve(window.L);
+      s.onerror = () => reject(new Error('Leaflet failed to load'));
+      document.head.append(s);
+    });
+  }
+  return leafletPromise;
+}
+
+function buildStopsList(stops) {
   const list = el('div', 'itin-stops');
   stops.forEach(stop => {
     const row   = el('div', 'itin-stop');
@@ -552,9 +819,76 @@ function showItinerary(parkName, stops) {
     row.append(dot, body);
     list.append(row);
   });
+  return list;
+}
 
-  card.append(list);
-  cards.prepend(card);
+function renderItineraryPane() {
+  const pane = trip.body;
+  if (!trip.days.length) return;
+  if (trip.dayIndex < 0 || trip.dayIndex >= trip.days.length) trip.dayIndex = 0;
+  buildDayChips(pane, () => selectTab('itinerary'));
+  pane.append(buildStopsList(trip.days[trip.dayIndex].stops));
+}
+
+const DAY_COLORS = ['#c8a96e', '#7fb069', '#c06060', '#6f9fc0', '#a06fc0'];
+
+function renderMapPane() {
+  const pane = trip.body;
+  const daysWithPts = trip.days
+    .map((d, di) => ({ di, label: d.label, pts: d.stops.filter(s => isFinite(s.latitude) && isFinite(s.longitude)) }))
+    .filter(d => d.pts.length);
+  if (!daysWithPts.length) return;
+
+  buildDayChips(pane, () => selectTab('map'), true);
+
+  const mapDiv = el('div', 'itin-map');
+  pane.append(mapDiv);
+
+  // dayIndex -1 means "All days"
+  const shown = trip.dayIndex === -1
+    ? daysWithPts
+    : daysWithPts.filter(d => d.di === trip.dayIndex);
+  const plot = shown.length ? shown : daysWithPts;
+
+  loadLeaflet().then(L => {
+    if (!mapDiv.isConnected) return; // user switched tabs before tiles arrived
+    const all = plot.flatMap(d => d.pts.map(s => [s.latitude, s.longitude]));
+    const map = L.map(mapDiv, { scrollWheelZoom: false });
+    map.fitBounds(L.latLngBounds(all).pad(0.25));
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(map);
+    plot.forEach(d => {
+      const color = DAY_COLORS[d.di % DAY_COLORS.length];
+      const latlngs = d.pts.map(s => [s.latitude, s.longitude]);
+      L.polyline(latlngs, { color, weight: 2, dashArray: '6 6', opacity: 0.8 }).addTo(map);
+      d.pts.forEach((s, i) => {
+        const icon = L.divIcon({ className: 'itin-marker', html: String(i + 1), iconSize: [26, 26] });
+        const marker = L.marker([s.latitude, s.longitude], { icon }).addTo(map)
+          .bindPopup(`${d.label ? d.label + ' — ' : ''}${i + 1}. ${s.location}`);
+        marker.getElement().style.background = color;
+      });
+    });
+    setTimeout(() => map.invalidateSize(), 150);
+  }).catch(() => mapDiv.remove());
+}
+
+function showItinerary(parkName, stops, dayLabel) {
+  const t = getTrip(parkName);
+  const label = dayLabel || `Day ${t.days.length + 1}`;
+  const existing = t.days.findIndex(d => d.label.toLowerCase() === label.toLowerCase());
+  if (existing >= 0) {
+    t.days[existing].stops = stops;
+    t.dayIndex = existing;
+  } else {
+    t.days.push({ label, stops });
+    t.dayIndex = t.days.length - 1;
+  }
+  ensureTab('itinerary');
+  if (t.days.some(d => d.stops.some(s => isFinite(s.latitude) && isFinite(s.longitude)))) {
+    ensureTab('map');
+  }
+  selectTab('itinerary');
 }
 
 // ── Tool execution ───────────────────────────────────────────────────────────
@@ -594,13 +928,49 @@ async function executeTool(name, args) {
     };
   }
 
+  if (name === 'get_common_species') {
+    const r = await fetch(`/api/species?lat=${args.latitude}&lng=${args.longitude}`);
+    const data = await r.json();
+    const results = data.results || [];
+    const CAT = {
+      Mammalia: 'mammal', Aves: 'bird', Plantae: 'plant', Insecta: 'insect',
+      Fungi: 'fungi', Reptilia: 'reptile', Amphibia: 'amphibian',
+    };
+    const n = results.length;
+    const t = getTrip(args.park_name);
+    t.speciesTiers = {};
+    const CARNIVORA = 41573; // iNat taxon id for the predator order
+    const species = results.map((x, i) => {
+      // Difficulty from real observation frequency: top third of the ranking
+      // is commonly seen, bottom third is genuinely rare here. Predators are
+      // over-reported relative to how easily a casual visitor spots one, so
+      // anything in Carnivora is capped at medium.
+      let tier = i < n / 3 ? 'easy' : i < (2 * n) / 3 ? 'medium' : 'long-shot';
+      if (tier === 'easy' && x.taxon?.ancestor_ids?.includes(CARNIVORA)) tier = 'medium';
+      const common = x.taxon?.preferred_common_name || '';
+      const sci    = x.taxon?.name || '';
+      for (const k of [common, sci]) if (k) t.speciesTiers[k.toLowerCase()] = tier;
+      return {
+        common_name: common || sci,
+        scientific_name: sci,
+        observations_nearby: x.count,
+        category: CAT[x.taxon?.iconic_taxon_name] || 'other',
+        difficulty: tier,
+      };
+    });
+    return {
+      species_ranked_by_observation_count: species,
+      note: 'Difficulties are computed from real observation frequency near this park. Keep them as given when building the bingo card.',
+    };
+  }
+
   if (name === 'create_bingo_card') {
     showBingoCard(args.park_name, args.items);
     return { success: true };
   }
 
   if (name === 'create_itinerary') {
-    showItinerary(args.park_name, args.stops);
+    showItinerary(args.park_name, args.stops, args.day_label);
     return { success: true };
   }
 
@@ -636,6 +1006,9 @@ async function handleMessage(raw) {
     case 'transcript.user':
       if (partialUserBubble) { partialUserBubble.wrap.remove(); partialUserBubble = null; }
       addBubble('user', m.text);
+      // The model is now composing its reply — show a pondering state
+      setOrb('thinking');
+      setStatus('The wild ponders…');
       break;
 
     case 'reply.started':
@@ -668,6 +1041,7 @@ async function handleMessage(raw) {
       if (partialAgentBubble) {
         partialAgentBubble.textEl.textContent = m.text;
         partialAgentBubble.textEl.classList.remove('partial');
+        scrollFeed();
       }
       break;
 
@@ -715,18 +1089,64 @@ async function handleMessage(raw) {
   }
 }
 
+// ── Access code dialog (window.prompt is unavailable in some embedded views) ──
+function askAccessCode() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:rgba(13,31,13,0.88);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    overlay.innerHTML = `
+      <div style="background:var(--bark);border:1px solid var(--moss);border-radius:14px;padding:28px;width:min(320px,85vw);text-align:center;box-shadow:0 0 60px var(--glow);">
+        <p style="color:var(--cream);margin:0 0 16px;font-size:1.05rem;">Whisper the access code to wake the wild</p>
+        <input type="password" autocomplete="off" style="width:100%;box-sizing:border-box;padding:11px;border-radius:9px;border:1px solid var(--moss);background:var(--forest);color:var(--cream);font-size:1rem;margin-bottom:14px;outline:none;" />
+        <div>
+          <button data-act="cancel" style="padding:10px 20px;border-radius:9px;border:1px solid var(--moss);background:transparent;color:var(--sage);cursor:pointer;margin-right:10px;">Not yet</button>
+          <button data-act="ok" style="padding:10px 24px;border-radius:9px;border:none;background:var(--fern);color:var(--cream);cursor:pointer;">Enter</button>
+        </div>
+      </div>`;
+    const input = overlay.querySelector('input');
+    const finish = (value) => { overlay.remove(); resolve(value); };
+    overlay.querySelector('[data-act="ok"]').addEventListener('click', () => finish(input.value.trim()));
+    overlay.querySelector('[data-act="cancel"]').addEventListener('click', () => finish(''));
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(input.value.trim()); });
+    document.body.appendChild(overlay);
+    input.focus();
+  });
+}
+
 // ── Start session ────────────────────────────────────────────────────────────
 async function startSession() {
   startBtn.classList.add('hidden');
   setStatus('Waking the wild…');
 
+  // Ask for the access code once and remember it for next time
+  // (localStorage can throw in sandboxed/file previews — treat it as optional)
+  let accessCode = '';
+  try { accessCode = localStorage.getItem('sotw_access_code') || ''; } catch {}
+  if (!accessCode) {
+    accessCode = await askAccessCode();
+    if (!accessCode) {
+      setStatus('An access code is needed to begin.');
+      startBtn.classList.remove('hidden');
+      return;
+    }
+  }
+
   // Mint a fresh single-use token
   let token;
   try {
-    const r = await fetch('/token');
+    const r = await fetch('/token', { headers: { 'x-access-code': accessCode } });
+    if (r.status === 401) {
+      try { localStorage.removeItem('sotw_access_code'); } catch {}
+      throw new Error('That access code was not recognized — try again.');
+    }
+    if (r.status === 429) {
+      throw new Error('Too many sessions from here — wait a few minutes.');
+    }
     const d = await r.json();
     token = d.token;
     if (!token) throw new Error(d.error || 'No token returned');
+    try { localStorage.setItem('sotw_access_code', accessCode); } catch {}
   } catch (e) {
     setStatus(`Token error: ${e.message}`);
     startBtn.classList.remove('hidden');
@@ -765,8 +1185,11 @@ async function startSession() {
       session: {
         system_prompt: `You are the living voice of America's National Parks — a presence that has watched forests grow, rivers carve canyons, and seasons turn for thousands of years.
 
+THE MOST IMPORTANT RULE — BREVITY:
+This is a spoken conversation, and ancient things do not chatter. Speak in 1-2 short sentences per turn, then stop and listen. A turn should rarely be longer than eight seconds of speech. Depth comes from what you choose to say, not how much. If there is more to tell, let the visitor draw it out of you.
+
 PERSONA SELECTION — do this first, every time:
-When a visitor arrives, greet them warmly and briefly, then ask who they'd like to speak with today. Present exactly these four options by name:
+When a visitor arrives, greet them in a single sentence, then ask who they'd like to speak with today. Present exactly these four options by name, each in just a few words:
 
 1. Elder Ranger — weathered wisdom, unhurried, knows every trail and hidden meadow
 2. Voice of the Forest — mystical and poetic, speaks as though the land itself is alive
@@ -784,7 +1207,7 @@ Once they choose, commit to that persona for the entire conversation. Do not bre
 CORE CAPABILITIES — weave these in naturally, never list them as a menu:
 
 1. PARK KNOWLEDGE & Q&A
-Answer questions about wildlife, plants, geology, history, and visitor tips across US national parks. Speak from deep familiarity, not like a brochure. When asked about animal or plant sightings, use the iNaturalist tool to pull recent observation data. Present findings as living stories — "Three days ago, someone spotted a black bear sow with cubs near the eastern trailhead" — not as raw data dumps.
+Answer questions about wildlife, plants, geology, history, and visitor tips across US national parks. Speak from deep familiarity, not like a brochure. When asked about animal or plant sightings, use the iNaturalist tool to pull recent observation data. Present findings as living stories — "Three days ago, someone spotted a black bear sow with cubs near the eastern trailhead" — not as raw data dumps. Share only the single most striking detail from any tool result, never a tour of everything it returned; keep the rest in reserve for follow-up questions.
 
 2. ITINERARY PLANNING
 When a visitor seems interested in planning their visit, gather what you need through natural conversation — not an interrogation. The questions to weave in:
@@ -793,7 +1216,7 @@ When a visitor seems interested in planning their visit, gather what you need th
 - Flora, fauna, geology, or just being outside?
 - Any mobility or accessibility considerations?
 
-Build the itinerary as a narrative, not a bulleted list. Describe it as a journey unfolding. Let their interests weight the whole thing — a birder's day starts at dawn near water; a geology lover's day moves toward exposed rock faces and canyon rims. End with one "secret" — a lesser-known detail or spot that feels like a gift.
+Ask these one at a time, one short question per turn. Build the itinerary as a narrative, not a bulleted list — but deliver it in small chapters, a sentence or two at a time, pausing for the visitor's reaction before continuing. When you call create_itinerary, include approximate latitude/longitude for stops at well-known named places so the trail map can draw them; for a multi-day visit, call it once per day with a day_label. Let their interests weight the whole thing — a birder's day starts at dawn near water; a geology lover's day moves toward exposed rock faces and canyon rims. End with one "secret" — a lesser-known detail or spot that feels like a gift.
 
 3. iNAT BINGO CARD
 When a visitor expresses interest in what they might see, offer to build them a personalized spotter's list. Ask:
@@ -801,13 +1224,14 @@ When a visitor expresses interest in what they might see, offer to build them a 
 - Any favorites or wish-list species?
 - How long will they be out, and roughly what habitat (meadow, forest, water's edge, alpine)?
 
-Generate a bingo card of 9 things (3x3) calibrated to what's actually likely to be seen based on iNaturalist data for that park and season. Frame each item as something to notice, not just find — "a spider web still holding morning dew" rather than just "spider." Make two or three of them genuinely achievable for anyone, two or three require patience and luck, and one should be a long shot worth dreaming about.
+Before building the card, ALWAYS call get_common_species — it returns species ranked by how often people actually observe them at that park, each with a difficulty computed from that real frequency. Build the 9 cells (3x3) mostly from that list, matched to the visitor's interests, and keep each species' computed difficulty as given. You may include one or two sensory non-species items ("a spider web still holding morning dew") — mark those easy. Frame every item as something to notice, not just find.
 
 ---
 
 VOICE BEHAVIOR RULES:
-- Respond in 2-3 sentences maximum, then stop and let the visitor respond. Do not monologue. If there is more to say, let them ask for it.
+- Respond in 1-2 short sentences, then stop and let the visitor respond. Do not monologue. If there is more to say, let them ask for it.
 - Keep responses short enough for voice. No walls of information. Pause points are your friend.
+- Never restate or summarize what the visitor just said, and never announce what you are about to do — just do it.
 - If you need to give a list, speak it — "three things to look for: first... second... third..."
 - Never say "I cannot" or "I don't have access to." Redirect gracefully in character.
 - If someone is struggling (bad signal, confusion), the Elder Ranger reassures, the Forest Voice slows further, the Naturalist pivots with curiosity, the Animal Spirit uses instinct as metaphor.
@@ -862,8 +1286,22 @@ When someone asks about a park, call get_park_info to get real data. Call get_re
           },
           {
             type: 'function',
+            name: 'get_common_species',
+            description: 'Get the species most frequently observed near a national park, ranked by real iNaturalist observation counts, each with a difficulty tier computed from that frequency. ALWAYS call this before create_bingo_card and build the card from these species, keeping each one\'s computed difficulty.',
+            parameters: {
+              type: 'object',
+              properties: {
+                park_name: { type: 'string', description: 'Name of the national park' },
+                latitude:  { type: 'number', description: 'Latitude of the park center (from get_park_info result)' },
+                longitude: { type: 'number', description: 'Longitude of the park center (from get_park_info result)' },
+              },
+              required: ['park_name', 'latitude', 'longitude'],
+            },
+          },
+          {
+            type: 'function',
             name: 'create_bingo_card',
-            description: 'Render a 3x3 nature spotter bingo card on screen. Call this after gathering the visitor\'s interests and consulting iNaturalist data. Items should be calibrated to what is realistically observable at that park and season.',
+            description: 'Render a 3x3 nature spotter bingo card on screen. Call get_common_species first and build the card from its frequency-ranked species, keeping their computed difficulties. Up to two cells may be sensory non-species items (mark those easy).',
             parameters: {
               type: 'object',
               properties: {
@@ -892,11 +1330,12 @@ When someone asks about a park, call get_park_info to get real data. Call get_re
           {
             type: 'function',
             name: 'create_itinerary',
-            description: 'Render a visual day itinerary on screen. Call this after gathering the visitor\'s available time, interests, and mobility needs through natural conversation.',
+            description: 'Render a visual day itinerary on screen, with a map of the stops when coordinates are provided. Call this after gathering the visitor\'s available time, interests, and mobility needs through natural conversation. For multi-day visits, call this once per day with a day_label so each day gets its own card and map.',
             parameters: {
               type: 'object',
               properties: {
                 park_name: { type: 'string', description: 'Name of the national park' },
+                day_label: { type: 'string', description: 'Optional label for multi-day trips, e.g. "Day 1 — The Geyser Basins"' },
                 stops: {
                   type: 'array',
                   description: 'Ordered list of itinerary stops.',
@@ -908,6 +1347,8 @@ When someone asks about a park, call get_park_info to get real data. Call get_re
                       description: { type: 'string', description: 'What the visitor will experience here, in persona voice' },
                       tip:         { type: 'string', description: 'Optional insider tip or secret detail for this stop' },
                       icon:        { type: 'string', description: 'A single emoji representing the activity or place' },
+                      latitude:    { type: 'number', description: 'Approximate latitude of this stop — include for well-known named places you are confident about, omit otherwise' },
+                      longitude:   { type: 'number', description: 'Approximate longitude of this stop — include for well-known named places you are confident about, omit otherwise' },
                     },
                     required: ['time', 'location', 'description'],
                   },

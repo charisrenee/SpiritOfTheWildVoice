@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/token", "destination": "/api/token" },
+    { "source": "/api/park", "destination": "/api/park" },
+    { "source": "/api/sightings", "destination": "/api/sightings" }
+  ]
+}

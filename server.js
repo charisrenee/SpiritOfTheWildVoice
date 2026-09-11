@@ -30,6 +30,9 @@ const server = http.createServer(async (req, res) => {
 
   // Mint a single-use AssemblyAI session token (never expose the real API key to the browser)
   if (url.pathname === '/token' && req.method === 'GET') {
+    if (process.env.ACCESS_CODE && req.headers['x-access-code'] !== process.env.ACCESS_CODE) {
+      return json(res, { error: 'Invalid access code' }, 401);
+    }
     try {
       const r = await fetch(
         'https://agents.assemblyai.com/v1/token?expires_in_seconds=300&max_session_duration_seconds=3600',
@@ -48,9 +51,20 @@ const server = http.createServer(async (req, res) => {
     if (!name) return json(res, { error: 'Missing ?name=' }, 400);
     try {
       const r = await fetch(
-        `https://developer.nps.gov/api/v1/parks?q=${encodeURIComponent(name)}&limit=3&fields=entranceFees,operatingHours,activities,topics,images&api_key=${NPS_API_KEY}`,
+        `https://developer.nps.gov/api/v1/parks?q=${encodeURIComponent(name)}&limit=50&fields=entranceFees,operatingHours,activities,topics,images&api_key=${NPS_API_KEY}`,
       );
       const data = await r.json();
+      // NPS q= is a full-text search sorted alphabetically, so the asked-for park
+      // can rank behind parks that merely mention it. Put name matches first.
+      if (Array.isArray(data.data)) {
+        const q = name.toLowerCase();
+        data.data.sort(
+          (a, b) =>
+            (b.fullName || '').toLowerCase().includes(q) -
+            (a.fullName || '').toLowerCase().includes(q),
+        );
+        data.data = data.data.slice(0, 3);
+      }
       return json(res, data);
     } catch (e) {
       return json(res, { error: e.message }, 500);
@@ -68,6 +82,23 @@ const server = http.createServer(async (req, res) => {
     try {
       const r = await fetch(
         `https://api.inaturalist.org/v1/observations?lat=${lat}&lng=${lng}&radius=50&quality_grade=research&per_page=12&order=desc&order_by=observed_on&iconic_taxa=Mammalia,Aves,Reptilia,Amphibia,Plantae`,
+      );
+      const data = await r.json();
+      return json(res, data);
+    } catch (e) {
+      return json(res, { error: e.message }, 500);
+    }
+  }
+
+  // Proxy iNaturalist species counts (frequency-ranked species near a lat/lng)
+  if (url.pathname === '/api/species' && req.method === 'GET') {
+    const lat = parseFloat(url.searchParams.get('lat')), lng = parseFloat(url.searchParams.get('lng'));
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return json(res, { error: 'Invalid lat/lng' }, 400);
+    }
+    try {
+      const r = await fetch(
+        `https://api.inaturalist.org/v1/observations/species_counts?lat=${lat}&lng=${lng}&radius=50&quality_grade=research&per_page=40&iconic_taxa=Mammalia,Aves,Reptilia,Amphibia,Plantae,Insecta,Fungi`,
       );
       const data = await r.json();
       return json(res, data);
