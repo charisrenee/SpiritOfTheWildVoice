@@ -1,6 +1,7 @@
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -23,20 +24,45 @@ async function json(res, data, status = 200) {
   res.end(JSON.stringify(data));
 }
 
+// Per-IP rate limiting (this server also runs as the production catch-all on Vercel)
+const buckets = new Map();
+function rateLimited(req, res, key, limit, windowMs) {
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+    req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const id = `${key}:${ip}`;
+  const b = buckets.get(id);
+  if (!b || now > b.reset) {
+    buckets.set(id, { count: 1, reset: now + windowMs });
+    return false;
+  }
+  if (++b.count > limit) {
+    res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': Math.ceil((b.reset - now) / 1000) });
+    res.end(JSON.stringify({ error: 'Too many requests — slow down a little.' }));
+    return true;
+  }
+  return false;
+}
+
+function accessCodeInvalid(req) {
+  if (!process.env.ACCESS_CODE) return false; // gate disabled when unset (local dev)
+  let given = req.headers['x-access-code'] || '';
+  try { given = decodeURIComponent(given); } catch {}
+  const a = crypto.createHash('sha256').update(String(given)).digest();
+  const b = crypto.createHash('sha256').update(process.env.ACCESS_CODE).digest();
+  return !crypto.timingSafeEqual(a, b);
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
-  // Mint a single-use AssemblyAI session token (never expose the real API key to the browser)
-  if (url.pathname === '/token' && req.method === 'GET') {
-    if (process.env.ACCESS_CODE) {
-      let given = req.headers['x-access-code'] || '';
-      try { given = decodeURIComponent(given); } catch {}
-      if (given !== process.env.ACCESS_CODE) {
-        return json(res, { error: 'Invalid access code' }, 401);
-      }
-    }
+  // Mint a single-use AssemblyAI session token (never expose the real API key to the browser).
+  // Also answers /api/token: on Vercel the /token rewrite lands here as /api/token.
+  if ((url.pathname === '/token' || url.pathname === '/api/token') && req.method === 'GET') {
+    if (accessCodeInvalid(req)) return json(res, { error: 'Invalid access code' }, 401);
+    if (rateLimited(req, res, 'token', 5, 10 * 60 * 1000)) return;
     try {
       const r = await fetch(
         'https://agents.assemblyai.com/v1/token?expires_in_seconds=300&max_session_duration_seconds=3600',
@@ -51,6 +77,7 @@ const server = http.createServer(async (req, res) => {
 
   // Proxy NPS park info (keeps NPS key off the client)
   if (url.pathname === '/api/park' && req.method === 'GET') {
+    if (rateLimited(req, res, 'park', 30, 60 * 1000)) return;
     const name = url.searchParams.get('name');
     if (!name) return json(res, { error: 'Missing ?name=' }, 400);
     try {
@@ -77,6 +104,7 @@ const server = http.createServer(async (req, res) => {
 
   // Proxy iNaturalist recent research-grade sightings near a lat/lng
   if (url.pathname === '/api/sightings' && req.method === 'GET') {
+    if (rateLimited(req, res, 'sightings', 30, 60 * 1000)) return;
     const latRaw = url.searchParams.get('lat');
     const lngRaw = url.searchParams.get('lng');
     const lat = parseFloat(latRaw), lng = parseFloat(lngRaw);
@@ -96,6 +124,7 @@ const server = http.createServer(async (req, res) => {
 
   // Proxy iNaturalist species counts (frequency-ranked species near a lat/lng)
   if (url.pathname === '/api/species' && req.method === 'GET') {
+    if (rateLimited(req, res, 'species', 30, 60 * 1000)) return;
     const lat = parseFloat(url.searchParams.get('lat')), lng = parseFloat(url.searchParams.get('lng'));
     if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
       return json(res, { error: 'Invalid lat/lng' }, 400);
