@@ -30,8 +30,12 @@ const server = http.createServer(async (req, res) => {
 
   // Mint a single-use AssemblyAI session token (never expose the real API key to the browser)
   if (url.pathname === '/token' && req.method === 'GET') {
-    if (process.env.ACCESS_CODE && req.headers['x-access-code'] !== process.env.ACCESS_CODE) {
-      return json(res, { error: 'Invalid access code' }, 401);
+    if (process.env.ACCESS_CODE) {
+      let given = req.headers['x-access-code'] || '';
+      try { given = decodeURIComponent(given); } catch {}
+      if (given !== process.env.ACCESS_CODE) {
+        return json(res, { error: 'Invalid access code' }, 401);
+      }
     }
     try {
       const r = await fetch(

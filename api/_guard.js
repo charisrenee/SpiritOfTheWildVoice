@@ -33,7 +33,8 @@ export function checkAccessCode(req, res) {
     res.status(500).json({ error: 'ACCESS_CODE is not configured on the server' });
     return false;
   }
-  const given = req.headers['x-access-code'] || '';
+  let given = req.headers['x-access-code'] || '';
+  try { given = decodeURIComponent(given); } catch {}
   const a = crypto.createHash('sha256').update(String(given)).digest();
   const b = crypto.createHash('sha256').update(expected).digest();
   if (!crypto.timingSafeEqual(a, b)) {

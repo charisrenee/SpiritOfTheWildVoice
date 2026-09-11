@@ -1135,7 +1135,8 @@ async function startSession() {
   // Mint a fresh single-use token
   let token;
   try {
-    const r = await fetch('/token', { headers: { 'x-access-code': accessCode } });
+    // URI-encode so codes with spaces/emoji/smart-quotes survive header rules
+    const r = await fetch('/token', { headers: { 'x-access-code': encodeURIComponent(accessCode) } });
     if (r.status === 401) {
       try { localStorage.removeItem('sotw_access_code'); } catch {}
       throw new Error('That access code was not recognized — try again.');
